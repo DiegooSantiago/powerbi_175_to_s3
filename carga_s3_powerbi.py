@@ -3,7 +3,7 @@ import time
 import boto3
 from datetime import datetime
 
-# Versión dcruz_240726
+# Versión dcruz_240809
 
 def log_message(message, log_file_path):
     """Registra un mensaje en el archivo log."""
@@ -25,9 +25,11 @@ def upload_file_to_s3(file_path, bucket_name, object_name, log_file_path):
         
         # Registrar en el archivo log
         log_message(f"Archivo '{object_name}' subido exitosamente a '{bucket_name}'.", log_file_path)
+        return True  # Indicar que la subida fue exitosa
 
     except Exception as e:
         log_message(f"Error al subir el archivo '{object_name}' a S3: {e}", log_file_path)
+        return False  # Indicar que ocurrió un error
 
 def move_files(trig_path, csv_path, destination_folder, log_file_path):
     """Mueve archivos al folder de destino."""
@@ -66,10 +68,13 @@ def monitor_directory(folder_path, bucket_name, destination_folder, log_file_pat
                     # Verifica si el archivo CSV correspondiente existe
                     if os.path.exists(csv_path):
                         # Subir archivo CSV al bucket de S3
-                        upload_file_to_s3(csv_path, bucket_name, filename.replace('.trig', '.csv'), log_file_path)
+                        upload_successful = upload_file_to_s3(csv_path, bucket_name, filename.replace('.trig', '.csv'), log_file_path)
                         
-                        # Mover archivos a la carpeta de transferidos
-                        move_files(trig_path, csv_path, destination_folder, log_file_path)
+                        # Mover archivos a la carpeta de transferidos solo si la subida fue exitosa
+                        if upload_successful:
+                            move_files(trig_path, csv_path, destination_folder, log_file_path)
+                        else:
+                            log_message(f"Subida fallida. Archivos '{filename}' no movidos.", log_file_path)
 
             # Esperar 5 segundos antes de la siguiente verificación
             time.sleep(5)
