@@ -1,9 +1,8 @@
 import os
-import time
 import boto3
 from datetime import datetime
 
-# Versión dcruz_240809
+# Versión dcruz_240906
 
 def log_message(message, log_file_path):
     """Registra un mensaje en el archivo log."""
@@ -56,34 +55,27 @@ def move_files(trig_path, csv_path, destination_folder, log_file_path):
         log_message(f"Error al mover los archivos '{os.path.basename(trig_path)}' y '{os.path.basename(csv_path)}': {e}", log_file_path)
 
 def monitor_directory(folder_path, bucket_name, destination_folder, log_file_path):
-    """Monitorea la carpeta y realiza las operaciones."""
-    while True:
-        try:
-            # Lista los archivos en la carpeta
-            for filename in os.listdir(folder_path):
-                if filename.endswith('.trig'):
-                    trig_path = os.path.join(folder_path, filename)
-                    csv_path = os.path.join(folder_path, filename.replace('.trig', '.csv'))
+    """Monitorea la carpeta y realiza las operaciones una vez."""
+    try:
+        # Lista los archivos en la carpeta
+        for filename in os.listdir(folder_path):
+            if filename.endswith('.trig'):
+                trig_path = os.path.join(folder_path, filename)
+                csv_path = os.path.join(folder_path, filename.replace('.trig', '.csv'))
 
-                    # Verifica si el archivo CSV correspondiente existe
-                    if os.path.exists(csv_path):
-                        # Subir archivo CSV al bucket de S3
-                        upload_successful = upload_file_to_s3(csv_path, bucket_name, filename.replace('.trig', '.csv'), log_file_path)
-                        
-                        # Mover archivos a la carpeta de transferidos solo si la subida fue exitosa
-                        if upload_successful:
-                            move_files(trig_path, csv_path, destination_folder, log_file_path)
-                        else:
-                            log_message(f"Subida fallida. Archivos '{filename}' no movidos.", log_file_path)
+                # Verifica si el archivo CSV correspondiente existe
+                if os.path.exists(csv_path):
+                    # Subir archivo CSV al bucket de S3
+                    upload_successful = upload_file_to_s3(csv_path, bucket_name, filename.replace('.trig', '.csv'), log_file_path)
+                    
+                    # Mover archivos a la carpeta de transferidos solo si la subida fue exitosa
+                    if upload_successful:
+                        move_files(trig_path, csv_path, destination_folder, log_file_path)
+                    else:
+                        log_message(f"Subida fallida. Archivos '{filename}' no movidos.", log_file_path)
 
-            # Esperar 5 segundos antes de la siguiente verificación
-            time.sleep(5)
-
-        except KeyboardInterrupt:
-            log_message("Proceso detenido por el usuario.", log_file_path)
-            break
-        except Exception as e:
-            log_message(f"Error durante la ejecución: {e}", log_file_path)
+    except Exception as e:
+        log_message(f"Error durante la ejecución: {e}", log_file_path)
 
 if __name__ == '__main__':
     # Definir rutas y nombres de bucket
@@ -92,5 +84,5 @@ if __name__ == '__main__':
     destination_folder = r'C:\FTP\powerbi\transferidos'
     log_file_path = r'C:\FTP\powerbi\log.log'
 
-    # Ejecutar la función de monitoreo
+    # Ejecutar la función de monitoreo una vez
     monitor_directory(folder_path, bucket_name, destination_folder, log_file_path)
